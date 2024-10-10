@@ -1,0 +1,60 @@
+#include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <TM1637Display.h>
+#include "secrets.h"
+
+// TM1637 pins
+#define CLK D5  // Clock pin (GPIO14)
+#define DIO D6  // Data pin (GPIO12)
+
+// Initialize the display
+TM1637Display display(CLK, DIO);
+
+// WiFi credentials
+//const char* ssid = "your_SSID";
+//const char* password = "your_PASSWORD";
+
+// NTP Client setup
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 7200, 60000);  // UTC+2 for Cape Town (7200 seconds offset)
+
+// Variables to control colon blinking
+bool colonState = false;
+
+void setup() {
+  // Initialize Serial
+  Serial.begin(115200);
+  
+  // Initialize the TM1637 display
+  display.setBrightness(0x0f);  // Max brightness
+  
+  // Connect to WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  // Initialize the NTP client
+  timeClient.begin();
+}
+
+void loop() {
+  // Update NTP time
+  timeClient.update();
+  
+  // Get hours and minutes from the NTP time
+  int hours = timeClient.getHours();
+  int minutes = timeClient.getMinutes();
+
+  // Toggle the colon state each second
+  colonState = !colonState;
+
+  // Display the time with or without colon based on colonState
+  int displayTime = hours * 100 + minutes;
+  display.showNumberDecEx(displayTime, colonState ? 0b01000000 : 0, true);  // Blink colon every second
+
+  // Update every second
+  delay(1000);
+}
